@@ -7,3 +7,9 @@ EditorBuildSettings:
   m_Scenes:
   - enabled: 1
     path: Assets/Scenes/main.unity
+  - enabled: 1
+    path: Assets/Scenes/auth.unity
+  - enabled: 1
+    path: Assets/Scenes/chat.unity
+  - enabled: 1
+    path: Assets/Scenes/gameboard.unity
