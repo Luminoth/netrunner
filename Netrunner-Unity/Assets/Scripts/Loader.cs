@@ -1,5 +1,6 @@
 ﻿using EnergonSoftware.Netrunner.Core;
 
+using UnityEngine;
 using UnityEngine.SceneManagement;
 
 namespace EnergonSoftware.Netrunner
@@ -8,10 +9,18 @@ namespace EnergonSoftware.Netrunner
     {
         private void Start()
         {
+            CreateManagers();
+
 // TODO: this is sort of temporary for now
-            SceneManager.LoadSceneAsync("auth", LoadSceneMode.Additive);
+            SceneManager.LoadSceneAsync(AuthManager.Instance.IsAuthenticated ? "chat" : "auth", LoadSceneMode.Additive);
 
             Destroy(gameObject);
+        }
+
+        private void CreateManagers()
+        {
+            GameObject managers = new GameObject { name = "managers" };
+            AuthManager.Create(managers);
         }
     }
 }
