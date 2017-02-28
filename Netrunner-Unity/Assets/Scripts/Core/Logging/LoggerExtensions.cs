@@ -1,6 +1,6 @@
 ﻿using UnityEngine;
 
-namespace EnergonSoftware.Netrunner.Logging
+namespace EnergonSoftware.Netrunner.Core.Logging
 {
     public static class LoggerExtensions
     {

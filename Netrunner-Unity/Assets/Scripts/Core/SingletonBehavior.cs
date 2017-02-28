@@ -1,4 +1,4 @@
-﻿using EnergonSoftware.Netrunner.Logging;
+﻿using EnergonSoftware.Netrunner.Core.Logging;
 
 using UnityEngine;
  

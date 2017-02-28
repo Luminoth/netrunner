@@ -4,7 +4,7 @@ using System.Threading;
 
 using UnityEngine;
 
-namespace EnergonSoftware.Netrunner.Logging
+namespace EnergonSoftware.Netrunner.Core.Logging
 {
     public sealed class CustomLogHandler : ILogHandler
     {
