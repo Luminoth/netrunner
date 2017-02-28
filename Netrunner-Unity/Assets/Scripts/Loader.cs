@@ -19,7 +19,7 @@ namespace EnergonSoftware.Netrunner
 
         private void CreateManagers()
         {
-            GameObject managers = new GameObject { name = "managers" };
+            GameObject managers = new GameObject { name = "Managers" };
             AuthManager.Create(managers);
         }
     }
