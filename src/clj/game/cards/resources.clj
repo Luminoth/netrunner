@@ -107,6 +107,7 @@
    "Artist Colony"
    {:abilities [{:prompt "Choose a card to install"
                  :msg (msg "install " (:title target))
+                 :req (req (not (install-locked? state side)))
                  :cost [:forfeit]
                  :choices (req (cancellable (filter #(not (is-type? % "Event")) (:deck runner)) :sorted))
                  :effect (effect (trigger-event :searched-stack nil)
@@ -472,7 +473,7 @@
              :successful-run {:interactive (req true)
                               :optional
                               {:delayed-completion true
-                               :req (req (first-event? state side :successful-run))
+                               :req (req (= 1 (count (get-in @state [:runner :register :successful-run]))))
                                :prompt "Use Find the Truth to look at the top card of R&D?"
                                :yes-ability {:msg "look at the top card of R&D"
                                              :effect (req (prompt! state :runner card (str "The top card of R&D is "
@@ -786,6 +787,12 @@
                                                     (clear-wait-prompt state :corp)
                                                     (system-msg state :runner (str "places 1 [Credits] on Net Mercur")))))}
                                card nil))}}}
+
+   "Network Exchange"
+   {:msg "increase the install cost of non-innermost ICE by 1"
+    :events {:pre-corp-install {:req (req (is-type? target "ICE"))
+                                :effect (req (when (pos? (count (:dest-zone (second targets))))
+                                               (install-cost-bonus state :corp [:credit 1])))}}}
 
    "Neutralize All Threats"
    {:in-play [:hq-access 1]
@@ -1150,7 +1157,8 @@
    "Street Peddler"
    {:effect (req (doseq [c (take 3 (:deck runner))]
                    (host state side (get-card state card) c {:facedown true})))
-    :abilities [{:prompt "Choose a card on Street Peddler to install"
+    :abilities [{:req (req (not (install-locked? state side)))
+                 :prompt "Choose a card on Street Peddler to install"
                  :choices (req (cancellable (filter #(and (not (is-type? % "Event"))
                                                           (can-pay? state side nil (modified-install-cost state side % [:credit -1])))
                                                     (:hosted card))))
@@ -1259,7 +1267,9 @@
                                  (gain-agenda-point state :corp 0))
                              (add-counter state side card :power 1)))}}
     :trash-effect {:effect (req (swap! state update-in [:corp] dissoc :cannot-win-on-points)
-                                (gain-agenda-point state :corp 0))}}
+                                (gain-agenda-point state :corp 0))}
+    :leave-play (req (swap! state update-in [:corp] dissoc :cannot-win-on-points)
+                     (gain-agenda-point state :corp 0))}
 
    "The Helpful AI"
    {:in-play [:link 1]

@@ -144,7 +144,8 @@
    "Clone Chip"
    {:abilities [{:prompt "Choose a program to install from your Heap" :msg (msg "install " (:title target))
                  :priority true :show-discard true
-                 :req (req (not (seq (get-in @state [:runner :locked :discard]))))
+                 :req (req (and (not (seq (get-in @state [:runner :locked :discard])))
+                               (not (install-locked? state side))))
                  :choices {:req #(and (is-type? % "Program")
                                       (= (:zone %) [:discard]))}
                  :effect (effect (trash card {:cause :ability-cost}) (runner-install target))}]}
@@ -389,6 +390,18 @@
               :effect (effect (trigger-event :searched-stack nil)
                               (shuffle! :deck)
                               (move target :hand))}}}
+
+   "Maw"
+   (let [manual {:optional
+                 {:label "Trash a card from HQ"
+                  :req (req (not (used-this-turn? (:cid card) state)))
+                  :prompt "Trash a card from HQ?"
+                  :yes-ability {:msg "trash a card from HQ"
+                                :once :per-turn
+                                :effect (effect (trash-cards (take 1 (shuffle (:hand corp)))))}}}]
+     {:in-play [:memory 2]
+      :implementation "Manual - click card to fire the trash"
+      :abilities [manual]})
 
    "Maya"
    {:in-play [:memory 2]

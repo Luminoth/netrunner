@@ -95,8 +95,8 @@
                               (do (show-wait-prompt state :corp "Runner to decide whether or not to prevent Alexa Belsky")
                                   (resolve-ability
                                     state side
-                                    {:prompt "How many credits?"
-                                     :choices :credit :player :runner
+                                    {:prompt "Prevent Alexa Belsky from shuffling back in 1 card for every 2 [Credits] spent. How many credits?"
+                                     :choices :credit :player :runner :priority 2
                                      :msg (msg "shuffle " (- (count (:hand corp)) (quot target 2)) " card"
                                                (when-not (= 1 (- (count (:hand corp)) (quot target 2))) "s")
                                                " in HQ into R&D")
@@ -104,7 +104,8 @@
                                                     (do (doseq [c (take (- (count (:hand corp)) (quot target 2))
                                                                         (shuffle (:hand corp)))]
                                                           (move state :corp c :deck))
-                                                        (shuffle! state :corp :deck)
+                                                        (when (pos? (- (count (:hand corp)) (quot target 2)))
+                                                          (shuffle! state :corp :deck))
                                                         (system-msg state :runner
                                                                     (str "pays " target " [Credits] to prevent "
                                                                          (quot target 2) " random card"
@@ -768,6 +769,13 @@
                    :effect (effect (gain :credit (* 2 (get-in card [:counter :power])))
                                    (trash card))}]})
 
+   "Net Analytics"
+   (let [ability {:req (req (not (empty? (filter #(some #{:tag} %) targets))))
+                  :msg (msg "to draw a card")
+                  :effect (effect (draw :corp))}]
+   {:events {:runner-loss ability
+             :runner-prevent ability}})
+
    "Net Police"
    {:recurring (effect (set-prop card :rec-counter (:link runner)))
     :effect (effect (set-prop card :rec-counter (:link runner)))}
@@ -1143,6 +1151,13 @@
                                   :msg (req (when (not this-server) "gain 2 [Credits]"))
                                   :effect (req (when (not this-server)
                                                  (gain state :corp :credit 2)))}}}
+
+   "Synth DNA Modification"
+   {:implementation "Manual fire once subroutine is broken"
+    :abilities [{:msg "do 1 net damage"
+                 :label "Do 1 net damage after AP subroutine broken"
+                 :once :per-turn
+                 :effect (effect (damage eid :net 1 {:card card}))}]}
 
    "Team Sponsorship"
    {:events {:agenda-scored {:label "Install a card from Archives or HQ"
