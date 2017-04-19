@@ -12,6 +12,8 @@ namespace EnergonSoftware.Netrunner
         [SerializeField]
         private Config _config;
 
+        public Config Config => _config;
+
         private void Awake()
         {
             _config = AssetManager.Instance.LoadAsset<Config>(ConfigAssetPath);
