@@ -1,5 +1,6 @@
 ﻿using EnergonSoftware.Netrunner.Auth;
 using EnergonSoftware.Netrunner.Core;
+using EnergonSoftware.Netrunner.Core.Assets;
 using EnergonSoftware.Netrunner.JintekiNet;
 
 using UnityEngine;
@@ -24,6 +25,8 @@ namespace EnergonSoftware.Netrunner
             GameObject managers = new GameObject { name = "Managers" };
 
 // TODO: this process should be dependency-driven
+            AssetManager.Create(managers);
+            GameManager.Create(managers);
             JintekiNetManager.Create(managers);
             AuthManager.Create(managers);
         }
