@@ -1,4 +1,5 @@
-﻿using EnergonSoftware.Netrunner.Core;
+﻿using EnergonSoftware.Netrunner.Auth;
+using EnergonSoftware.Netrunner.Core;
 using EnergonSoftware.Netrunner.Core.Util;
 
 using UnityEngine;
@@ -30,7 +31,7 @@ namespace EnergonSoftware.Netrunner.UI
 
         private void Awake()
         {
-            _errorText.enabled = false;
+            DisableErrorText();
         }
 
         private void Start()
@@ -48,11 +49,23 @@ namespace EnergonSoftware.Netrunner.UI
             _loginButton.interactable = interactable;
         }
 
+        private void EnableErrorText(string error)
+        {
+            _errorText.text = error;
+            _errorText.gameObject.SetActive(true);
+        }
+
+        private void DisableErrorText()
+        {
+            _errorText.text = string.Empty;
+            _errorText.gameObject.SetActive(false);
+        }
+
 #region Event Handlers
         public void OnLogin()
         {
             SetInteractable(false);
-            _errorText.text = string.Empty;
+            DisableErrorText();
 
             AuthManager.Instance.Authenticate(_usernameInput.text, _passwordInput.text, _saveLoginToggle.isOn,
                 () =>
@@ -62,7 +75,7 @@ namespace EnergonSoftware.Netrunner.UI
                 },
                 reason =>
                 {
-                    _errorText.text = $"Authentication Failed: ${reason}";
+                    EnableErrorText($"Authentication Failed: ${reason}");
                     SetInteractable(true);
                 }
             );

@@ -2,10 +2,11 @@
 
 using EnergonSoftware.Netrunner.Core;
 using EnergonSoftware.Netrunner.Core.Util;
+using EnergonSoftware.Netrunner.JintekiNet;
 
 using UnityEngine;
 
-namespace EnergonSoftware.Netrunner
+namespace EnergonSoftware.Netrunner.Auth
 {
     public sealed class AuthManager : SingletonBehavior<AuthManager>
     {
@@ -25,9 +26,18 @@ namespace EnergonSoftware.Netrunner
             }
             PlayerPrefsExtensions.SetBool("authSaveLogin", saveLogin);
 
-// TODO: put this shiz in a callback to the auth process
-            _isAuthenticated = true;
-            onSuccess?.Invoke();
+            JintekiNetManager.Instance.Authenticate(username, password,
+                () =>
+                {
+                    _isAuthenticated = true;
+                    onSuccess?.Invoke();
+                },
+                reason =>
+                {
+                    _isAuthenticated = false;
+                    onFailure?.Invoke(reason);
+                }
+            );
         }
     }
 }
