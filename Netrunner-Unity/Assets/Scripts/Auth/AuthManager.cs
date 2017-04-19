@@ -9,8 +9,7 @@ namespace EnergonSoftware.Netrunner
 {
     public sealed class AuthManager : SingletonBehavior<AuthManager>
     {
-        [SerializeField]
-        [ReadOnly]
+        [SerializeField, ReadOnly]
         private bool _isAuthenticated;
 
         public bool IsAuthenticated => _isAuthenticated;
