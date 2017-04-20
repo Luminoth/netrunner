@@ -11,4 +11,4 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2ba62fb07fec10b44b146315e8958463, type: 3}
   m_Name: Config
   m_EditorClassIdentifier: 
-  _backendURL: ws://127.0.0.1:4567/socket.io/?EIO=3&transport=websocket
+  _backendURL: wss://ws.jinteki.net/socket.io/?EIO=3&transport=websocket
