@@ -19,6 +19,25 @@ namespace EnergonSoftware.Netrunner.Core.SocketIO
         public SocketIO(string url)
         {
             _webSocket = new WebSocket(url);
+            _webSocket.Log.Output += (data, file) =>
+            {
+                switch(data.Level)
+                {
+                case LogLevel.Trace:
+                case LogLevel.Debug:
+                case LogLevel.Info:
+                    Logger.Log(data.Message);
+                    break;
+                case LogLevel.Warn:
+                    Logger.LogWarning(data.Message);
+                    break;
+                case LogLevel.Error:
+                case LogLevel.Fatal:
+                    Logger.LogError(data.Message);
+                    break;
+                }
+            };
+
             _webSocket.OnOpen += WebSocketOpenEventHandler;
             _webSocket.OnClose += WebSocketCloseEventHandler;
             _webSocket.OnError += WebSocketErrorEventHandler;
