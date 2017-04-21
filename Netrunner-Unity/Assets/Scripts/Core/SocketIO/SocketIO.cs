@@ -53,12 +53,12 @@ Logger.LogError("web socket open!");
 
         private void WebSocketCloseEventHandler(object sender, CloseEventArgs args)
         {
-Logger.LogError("web socket close!");
+Logger.LogError($"web socket close: {args.Code}:{args.Reason} ({args.WasClean})");
         }
 
         private void WebSocketErrorEventHandler(object sender, ErrorEventArgs args)
         {
-Logger.LogError("web socket error!");
+Logger.LogError($"web socket error: {args.Message}");
         }
 
         private void WebSocketMessageEventHandler(object sender, MessageEventArgs args)
