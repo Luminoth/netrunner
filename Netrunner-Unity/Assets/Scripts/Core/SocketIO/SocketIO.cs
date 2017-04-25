@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Net;
 
 using EnergonSoftware.Netrunner.Core.Logging;
 
@@ -51,6 +52,19 @@ namespace EnergonSoftware.Netrunner.Core.SocketIO
             }
 
             Logger.Log($"Connecting web socket at {_webSocket.Url}...");
+
+            ServicePointManager.ServerCertificateValidationCallback = (sender, certificate, chain, sslPolicyErrors) =>
+            {
+                Logger.Log("Validating server certificate (ServicePointManager)...");
+                return true;
+            };
+
+            _webSocket.SslConfiguration.ServerCertificateValidationCallback = (sender, certificate, chain, sslPolicyErrors) =>
+            {
+                Logger.Log("Validating server certificate (SslConfiguration)...");
+                return true;
+            };
+
             _webSocket.ConnectAsync();
         }
 
