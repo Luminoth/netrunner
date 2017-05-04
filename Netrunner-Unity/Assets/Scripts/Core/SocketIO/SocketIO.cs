@@ -62,14 +62,18 @@ namespace EnergonSoftware.Netrunner.Core.SocketIO
 
             Uri uri = new Uri(url);
             if(IsSecureURI(uri)) {
-                ServicePointManager.ServerCertificateValidationCallback = (o, certificate, chain, errors) => true;
+                Logger.LogDebug("Using secure connection!");
+                ServicePointManager.ServerCertificateValidationCallback = (o, certificate, chain, errors) =>
+                {
+                    Logger.LogDebug("Server certificate validation!");
+                    return true;
+                };
             }
 
             try {
                 await _webSocket.ConnectAsync(uri, CancellationToken.None).ConfigureAwait(false);
             } catch(Exception ex) {
-                Logger.LogError($"Connection exception: {ex.InnerException?.Message ?? ex.Message}");
-                Logger.Log(ex.InnerException?.StackTrace ?? ex.StackTrace);
+                Logger.LogError($"Connection exception: {ex.InnerException ?? ex}");
                 return false;
             }
 
