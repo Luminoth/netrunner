@@ -14,24 +14,21 @@ namespace EnergonSoftware.Netrunner.Core.Logging
         {
             StringBuilder newLogFormat = new StringBuilder();
 
-            newLogFormat.Append("[");
-            if(AsyncTools.IsMainThread()) {
-                string contextName = (SynchronizationContext.Current as UnitySynchronizationContext)?.Name ?? "-";
-                newLogFormat.Append($"{contextName}:{Time.frameCount}");
-            } else {
-                newLogFormat.Append($"{Thread.CurrentThread.ManagedThreadId}");
+            newLogFormat.Append($"[{Thread.CurrentThread.ManagedThreadId}");
+            if(Thread.CurrentThread.ManagedThreadId == GameManager.Instance.MainThreadId) {
+                newLogFormat.Append($":{Time.frameCount}");
             }
             newLogFormat.Append("]");
 
             newLogFormat.Append(": ");
             newLogFormat.Append(format);
 
-            Debug.logger.logHandler.LogFormat(logType, context, newLogFormat.ToString(), args);
+            Debug.unityLogger.logHandler.LogFormat(logType, context, newLogFormat.ToString(), args);
         }
 
         public void LogException(Exception exception, UnityEngine.Object context)
         {
-            Debug.logger.LogException(exception, context);
+            Debug.unityLogger.LogException(exception, context);
         }
     }
 }

@@ -1,103 +1,79 @@
 ﻿using System;
 using System.Net;
+using System.Net.WebSockets;
+using System.Threading;
+using System.Threading.Tasks;
 
 using EnergonSoftware.Netrunner.Core.Logging;
-
-using WebSocketSharp;
 
 namespace EnergonSoftware.Netrunner.Core.SocketIO
 {
     // https://github.com/socketio/socket.io-protocol
-    public sealed class SocketIO
+    public sealed class SocketIO : IDisposable
     {
         private static readonly UnityEngine.Logger Logger = new UnityEngine.Logger(new CustomLogHandler());
 
-        private readonly WebSocket _webSocket;
+        // TODO: make this an extension
+        private static bool IsSecureURI(Uri uri)
+        {
+            return uri.Scheme.Equals("https", StringComparison.InvariantCultureIgnoreCase)
+                || uri.Scheme.Equals("wss", StringComparison.InvariantCultureIgnoreCase);
+        }
+
+        private readonly ClientWebSocket _webSocket;
+
+        public bool IsConnected => WebSocketState.Open == (_webSocket?.State ?? WebSocketState.Closed);
 
         private readonly Encoder _encoder = new Encoder();
         private readonly Decoder _decoder = new Decoder();
 
-        public SocketIO(string url)
+        public SocketIO()
         {
-            _webSocket = new WebSocket(url);
-            _webSocket.Log.Output += (data, file) =>
-            {
-                switch(data.Level)
-                {
-                case LogLevel.Trace:
-                case LogLevel.Debug:
-                case LogLevel.Info:
-                    Logger.Log(data.Message);
-                    break;
-                case LogLevel.Warn:
-                    Logger.LogWarning(data.Message);
-                    break;
-                case LogLevel.Error:
-                case LogLevel.Fatal:
-                    Logger.LogError(data.Message);
-                    break;
-                }
-            };
-
-            _webSocket.OnOpen += WebSocketOpenEventHandler;
-            _webSocket.OnClose += WebSocketCloseEventHandler;
-            _webSocket.OnError += WebSocketErrorEventHandler;
-            _webSocket.OnMessage += WebSocketMessageEventHandler;
+            _webSocket = new ClientWebSocket();
         }
 
-        public void Connect()
+        ~SocketIO()
         {
-            if(_webSocket.IsAlive) {
-                return;
+            Dispose(false);
+        }
+
+#region IDisposable
+        public void Dispose()
+        {
+            Dispose(true);
+        }
+
+        private void Dispose(bool disposing)
+        {
+            if(disposing) {
+                _webSocket.Dispose();
             }
-
-            Logger.Log($"Connecting web socket at {_webSocket.Url}...");
-
-            ServicePointManager.ServerCertificateValidationCallback = (sender, certificate, chain, sslPolicyErrors) =>
-            {
-                Logger.Log("Validating server certificate (ServicePointManager)...");
-                return true;
-            };
-
-            _webSocket.SslConfiguration.ServerCertificateValidationCallback = (sender, certificate, chain, sslPolicyErrors) =>
-            {
-                Logger.Log("Validating server certificate (SslConfiguration)...");
-                return true;
-            };
-
-            _webSocket.ConnectAsync();
-        }
-
-        public void Close()
-        {
-            if(!_webSocket.IsAlive) {
-                return;
-            }
-
-            Logger.Log("Closing web socket...");
-            _webSocket.CloseAsync();
-        }
-
-#region Event Handlers
-        private void WebSocketOpenEventHandler(object sender, EventArgs args)
-        {
-Logger.LogError("web socket open!");
-        }
-
-        private void WebSocketCloseEventHandler(object sender, CloseEventArgs args)
-        {
-Logger.LogError($"web socket close: {args.Code}:{args.Reason} ({args.WasClean})");
-        }
-
-        private void WebSocketErrorEventHandler(object sender, ErrorEventArgs args)
-        {
-Logger.LogError($"web socket error: {args.Message}");
-        }
-
-        private void WebSocketMessageEventHandler(object sender, MessageEventArgs args)
-        {
-Logger.LogError("web socket message!");
         }
 #endregion
+
+        public async Task<bool> ConnectAsync(string url)
+        {
+            if(IsConnected) {
+                // TODO: what if it's a different URL?
+                return true;
+            }
+
+            Logger.Log($"Connecting web socket at {url}...");
+
+            Uri uri = new Uri(url);
+            if(IsSecureURI(uri)) {
+                ServicePointManager.ServerCertificateValidationCallback = (o, certificate, chain, errors) => true;
+            }
+
+            try {
+                await _webSocket.ConnectAsync(uri, CancellationToken.None).ConfigureAwait(false);
+            } catch(Exception ex) {
+                Logger.LogError($"Connection exception: {ex.InnerException?.Message ?? ex.Message}");
+                Logger.Log(ex.InnerException?.StackTrace ?? ex.StackTrace);
+                return false;
+            }
+
+            return WebSocketState.Open == _webSocket.State;
+        }
     }
 }
