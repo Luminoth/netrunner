@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Threading.Tasks;
 
 using EnergonSoftware.Netrunner.Core;
 using EnergonSoftware.Netrunner.Core.Logging;
@@ -10,14 +11,29 @@ namespace EnergonSoftware.Netrunner.JintekiNet
     {
         private static readonly UnityEngine.Logger Logger = new UnityEngine.Logger(new CustomLogHandler());
 
-        private SocketIO _socketIO;
-
-        private async void Awake()
+        public sealed class ConnectionFailedEventArgs : EventArgs
         {
-            _socketIO = new SocketIO();
+            public string Reason { get; set; }
 
-            bool connected = await _socketIO.ConnectAsync(GameManager.Instance.Config.BackendURL);
-Logger.LogError($"connected: {connected}");
+            public ConnectionFailedEventArgs()
+            {
+            }
+
+            public ConnectionFailedEventArgs(SocketIO.ConnectionFailedEventArgs args)
+            {
+                Reason = args.Reason;
+            }
+        }
+
+#region Events
+        public event EventHandler<ConnectionFailedEventArgs> ConnectionFailedEvent;
+#endregion
+
+        private SocketIO _socketIO = new SocketIO();
+
+        private void Awake()
+        {
+            _socketIO.ConnectionFailedEvent += ConnectionFailedEventHandler;
         }
 
         protected override void OnDestroy()
@@ -28,9 +44,25 @@ Logger.LogError($"connected: {connected}");
             _socketIO = null;
         }
 
-        public void Authenticate(string username, string password, Action onSuccess, Action<string> onFailure)
+        public async Task Authenticate(string username, string password, Action onSuccess, Action<string> onFailure)
         {
-            onSuccess?.Invoke();
+            await _socketIO.ConnectAsync(GameManager.Instance.Config.BackendURL);
+
+            GameManager.Instance.RunOnMainThread(() =>
+            {
+                if(_socketIO.IsConnected) {
+                    onSuccess?.Invoke();
+                } else {
+                    onFailure?.Invoke("Connection failed!");
+                }
+            });
         }
+
+#region Event Handlers
+        private void ConnectionFailedEventHandler(object sender, SocketIO.ConnectionFailedEventArgs args)
+        {
+            ConnectionFailedEvent?.Invoke(this, new ConnectionFailedEventArgs(args));
+        }
+#endregion
     }
 }

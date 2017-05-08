@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Threading.Tasks;
 
 using EnergonSoftware.Netrunner.Core;
 using EnergonSoftware.Netrunner.Core.Util;
@@ -15,7 +16,7 @@ namespace EnergonSoftware.Netrunner.Auth
 
         public bool IsAuthenticated => _isAuthenticated;
 
-        public void Authenticate(string username, string password, bool saveLogin, Action onSuccess, Action<string> onFailure)
+        public async Task Authenticate(string username, string password, bool saveLogin, Action onSuccess, Action<string> onFailure)
         {
             if(saveLogin) {
                 PlayerPrefs.SetString("authUsername", username);
@@ -26,7 +27,7 @@ namespace EnergonSoftware.Netrunner.Auth
             }
             PlayerPrefsExtensions.SetBool("authSaveLogin", saveLogin);
 
-            JintekiNetManager.Instance.Authenticate(username, password,
+            await JintekiNetManager.Instance.Authenticate(username, password,
                 () =>
                 {
                     _isAuthenticated = true;
@@ -37,7 +38,7 @@ namespace EnergonSoftware.Netrunner.Auth
                     _isAuthenticated = false;
                     onFailure?.Invoke(reason);
                 }
-            );
+            ).ConfigureAwait(false);
         }
     }
 }

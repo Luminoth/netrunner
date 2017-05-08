@@ -13,6 +13,20 @@ namespace EnergonSoftware.Netrunner.Core.SocketIO
     {
         private static readonly UnityEngine.Logger Logger = new UnityEngine.Logger(new CustomLogHandler());
 
+        public sealed class ConnectionFailedEventArgs : EventArgs
+        {
+            public string Reason { get; set; }
+
+            public ConnectionFailedEventArgs(Exception ex)
+            {
+                Reason = ex.InnerException?.Message ?? ex.Message;
+            }
+        }
+
+#region Events
+        public event EventHandler<ConnectionFailedEventArgs> ConnectionFailedEvent;
+#endregion
+
         // TODO: make this an extension
         private static bool IsSecureURI(Uri uri)
         {
@@ -51,11 +65,11 @@ namespace EnergonSoftware.Netrunner.Core.SocketIO
         }
 #endregion
 
-        public async Task<bool> ConnectAsync(string url)
+        public async Task ConnectAsync(string url)
         {
             if(IsConnected) {
                 // TODO: what if it's a different URL?
-                return true;
+                return;
             }
 
             Logger.Log($"Connecting web socket at {url}...");
@@ -74,10 +88,9 @@ namespace EnergonSoftware.Netrunner.Core.SocketIO
                 await _webSocket.ConnectAsync(uri, CancellationToken.None).ConfigureAwait(false);
             } catch(Exception ex) {
                 Logger.LogError($"Connection exception: {ex.InnerException ?? ex}");
-                return false;
+                ConnectionFailedEvent?.Invoke(this, new ConnectionFailedEventArgs(ex));
+                return;
             }
-
-            return WebSocketState.Open == _webSocket.State;
         }
     }
 }

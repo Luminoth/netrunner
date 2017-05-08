@@ -1,6 +1,7 @@
 ﻿using EnergonSoftware.Netrunner.Auth;
 using EnergonSoftware.Netrunner.Core;
 using EnergonSoftware.Netrunner.Core.Util;
+using EnergonSoftware.Netrunner.JintekiNet;
 
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -32,6 +33,15 @@ namespace EnergonSoftware.Netrunner.UI
         private void Awake()
         {
             DisableErrorText();
+
+            JintekiNetManager.Instance.ConnectionFailedEvent += ConnectionFailedEventHandler;
+        }
+
+        private void OnDestroy()
+        {
+            if(null != JintekiNetManager.Instance) {
+                JintekiNetManager.Instance.ConnectionFailedEvent -= ConnectionFailedEventHandler;
+            }
         }
 
         private void Start()
@@ -62,12 +72,12 @@ namespace EnergonSoftware.Netrunner.UI
         }
 
 #region Event Handlers
-        public void OnLogin()
+        public async void OnLogin()
         {
             SetInteractable(false);
             DisableErrorText();
 
-            AuthManager.Instance.Authenticate(_usernameInput.text, _passwordInput.text, _saveLoginToggle.isOn,
+            await AuthManager.Instance.Authenticate(_usernameInput.text, _passwordInput.text, _saveLoginToggle.isOn,
                 () =>
                 {
                     SceneManager.LoadSceneAsync("chat", LoadSceneMode.Additive);
@@ -75,10 +85,18 @@ namespace EnergonSoftware.Netrunner.UI
                 },
                 reason =>
                 {
-                    EnableErrorText($"Authentication Failed: ${reason}");
+                    EnableErrorText($"Authentication Failed: {reason}");
                     SetInteractable(true);
                 }
-            );
+            ).ConfigureAwait(false);
+        }
+
+        private void ConnectionFailedEventHandler(object sender, JintekiNetManager.ConnectionFailedEventArgs args)
+        {
+            GameManager.Instance.RunOnMainThread(() =>
+            {
+                EnableErrorText($"Connection failed: {args.Reason}");
+            });
         }
 #endregion
     }

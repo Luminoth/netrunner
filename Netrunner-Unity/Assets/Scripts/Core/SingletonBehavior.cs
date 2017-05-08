@@ -19,8 +19,6 @@ namespace EnergonSoftware.Netrunner.Core
 
         private static T _instance;
 
-        public static bool HasInstance => null != _instance;
-
         private static bool applicationIsQuitting;
 
         public static T Instance
@@ -32,7 +30,7 @@ namespace EnergonSoftware.Netrunner.Core
                     return null;
                 }
  
-                if(HasInstance) {
+                if(null != _instance) {
                     return _instance;
                 }
                 _instance = (T)FindObjectOfType(typeof(T));
@@ -42,7 +40,7 @@ namespace EnergonSoftware.Netrunner.Core
                     return _instance;
                 }
  
-                if(!HasInstance) {
+                if(null == _instance) {
                     GameObject singleton = new GameObject();
                     Create(singleton);
                     singleton.name = "(singleton) "+ typeof(T);
@@ -60,7 +58,7 @@ namespace EnergonSoftware.Netrunner.Core
 
         public static T Create(GameObject owner)
         {
-            if(HasInstance) {
+            if(null != _instance) {
                 Logger.LogWarning($"[Singleton] Using instance already created: {_instance.gameObject.name}");
                 return _instance;
             }
