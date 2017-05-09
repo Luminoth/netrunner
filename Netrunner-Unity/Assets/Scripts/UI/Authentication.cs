@@ -39,7 +39,7 @@ namespace EnergonSoftware.Netrunner.UI
 
         private void OnDestroy()
         {
-            if(null != JintekiNetManager.Instance) {
+            if(JintekiNetManager.HasInstance) {
                 JintekiNetManager.Instance.ConnectionFailedEvent -= ConnectionFailedEventHandler;
             }
         }
