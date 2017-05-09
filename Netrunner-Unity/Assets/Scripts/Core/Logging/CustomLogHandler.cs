@@ -15,7 +15,7 @@ namespace EnergonSoftware.Netrunner.Core.Logging
             StringBuilder newLogFormat = new StringBuilder();
 
             newLogFormat.Append($"[{Thread.CurrentThread.ManagedThreadId}");
-            if(Thread.CurrentThread.ManagedThreadId == GameManager.Instance.MainThreadId) {
+            if(GameManager.HasInstance && Thread.CurrentThread.ManagedThreadId == GameManager.Instance.MainThreadId) {
                 newLogFormat.Append($":{Time.frameCount}");
             }
             newLogFormat.Append("]");
