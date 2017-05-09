@@ -19,6 +19,8 @@ namespace EnergonSoftware.Netrunner.Core
 
         private static T _instance;
 
+        public static bool HasInstance => null != _instance;
+
         private static bool applicationIsQuitting;
 
         public static T Instance
