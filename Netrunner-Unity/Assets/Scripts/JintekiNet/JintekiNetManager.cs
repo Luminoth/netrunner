@@ -1,67 +1,64 @@
 ﻿using System;
-using System.Threading.Tasks;
+
+using BestHTTP.SocketIO;
 
 using EnergonSoftware.Netrunner.Core;
 using EnergonSoftware.Netrunner.Core.Logging;
-using EnergonSoftware.Netrunner.Core.SocketIO;
+using EnergonSoftware.Netrunner.Core.Util;
+
+using UnityEngine;
 
 namespace EnergonSoftware.Netrunner.JintekiNet
 {
     public sealed class JintekiNetManager : SingletonBehavior<JintekiNetManager>
     {
-        private static readonly UnityEngine.Logger Logger = new UnityEngine.Logger(new CustomLogHandler());
+        private static readonly Logger Logger = new Logger(new CustomLogHandler());
 
-        public sealed class ConnectionFailedEventArgs : EventArgs
-        {
-            public string Reason { get; set; }
+        private SocketManager _socketManager;
 
-            public ConnectionFailedEventArgs()
-            {
-            }
-
-            public ConnectionFailedEventArgs(SocketIO.ConnectionFailedEventArgs args)
-            {
-                Reason = args.Reason;
-            }
-        }
-
-#region Events
-        public event EventHandler<ConnectionFailedEventArgs> ConnectionFailedEvent;
-#endregion
-
-        private SocketIO _socketIO = new SocketIO();
-
-        private void Awake()
-        {
-            _socketIO.ConnectionFailedEvent += ConnectionFailedEventHandler;
-        }
-
+#region Unity Lifecycle
         protected override void OnDestroy()
         {
+            _socketManager?.Close();
+
             base.OnDestroy();
-
-            _socketIO.Dispose();
-            _socketIO = null;
         }
+#endregion
 
-        public async Task Authenticate(string username, string password, Action onSuccess, Action<string> onFailure)
+        public void Connect(string username, string password, bool saveLogin)
         {
-            await _socketIO.ConnectAsync(GameManager.Instance.Config.BackendURL);
+            if(saveLogin) {
+                PlayerPrefs.SetString("authUsername", username);
+                // TODO: password
+            } else {
+                PlayerPrefs.DeleteKey("authUsername");
+                // TODO: password
+            }
+            PlayerPrefsExtensions.SetBool("authSaveLogin", saveLogin);
 
-            GameManager.Instance.RunOnMainThread(() =>
+            _socketManager?.Close();
+
+            SocketOptions options = new SocketOptions
             {
-                if(_socketIO.IsConnected) {
-                    onSuccess?.Invoke();
-                } else {
-                    onFailure?.Invoke("Connection failed!");
-                }
-            });
+                AutoConnect = false
+            };
+            _socketManager = new SocketManager(new Uri(GameManager.Instance.Config.BackendURL), options);
+
+            _socketManager.Socket.On("login", OnLogin);
+            _socketManager.Socket.On(SocketIOEventTypes.Error, OnError);
+
+            _socketManager.Open();
         }
 
 #region Event Handlers
-        private void ConnectionFailedEventHandler(object sender, SocketIO.ConnectionFailedEventArgs args)
+        private void OnLogin(Socket socket, Packet packet, params object[] args)
         {
-            ConnectionFailedEvent?.Invoke(this, new ConnectionFailedEventArgs(args));
+            Logger.Log("Connection success!");
+        }
+
+        private void OnError(Socket socket, Packet packet, params object[] args)
+        {
+            Logger.Log($"Connection Error: {args[0]}");
         }
 #endregion
     }

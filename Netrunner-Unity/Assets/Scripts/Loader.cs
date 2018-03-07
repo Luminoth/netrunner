@@ -1,5 +1,4 @@
-﻿using EnergonSoftware.Netrunner.Auth;
-using EnergonSoftware.Netrunner.Core;
+﻿using EnergonSoftware.Netrunner.Core;
 using EnergonSoftware.Netrunner.Core.Assets;
 using EnergonSoftware.Netrunner.JintekiNet;
 
@@ -15,7 +14,7 @@ namespace EnergonSoftware.Netrunner
             CreateManagers();
 
 // TODO: this is sort of temporary for now
-            SceneManager.LoadSceneAsync(AuthManager.Instance.IsAuthenticated ? "chat" : "auth", LoadSceneMode.Additive);
+            SceneManager.LoadSceneAsync("auth", LoadSceneMode.Additive);
 
             Destroy(gameObject);
         }
@@ -28,7 +27,6 @@ namespace EnergonSoftware.Netrunner
             AssetManager.Create(managers);
             GameManager.Create(managers);
             JintekiNetManager.Create(managers);
-            AuthManager.Create(managers);
         }
     }
 }

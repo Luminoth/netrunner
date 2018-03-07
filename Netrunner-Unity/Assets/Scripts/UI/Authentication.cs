@@ -1,5 +1,4 @@
-﻿using EnergonSoftware.Netrunner.Auth;
-using EnergonSoftware.Netrunner.Core;
+﻿using EnergonSoftware.Netrunner.Core;
 using EnergonSoftware.Netrunner.Core.Util;
 using EnergonSoftware.Netrunner.JintekiNet;
 
@@ -12,7 +11,6 @@ namespace EnergonSoftware.Netrunner.UI
     public sealed class Authentication : MonoBehavior
     {
 #region Controls
-        #pragma warning disable 0649
         [SerializeField]
         private InputField _usernameInput;
 
@@ -27,20 +25,19 @@ namespace EnergonSoftware.Netrunner.UI
 
         [SerializeField]
         private Button _loginButton;
-        #pragma warning restore 0649
 #endregion
 
         private void Awake()
         {
             DisableErrorText();
 
-            JintekiNetManager.Instance.ConnectionFailedEvent += ConnectionFailedEventHandler;
+            //JintekiNetManager.Instance.ConnectionErrorEvent += ConnectionErrorEventHandler;
         }
 
         private void OnDestroy()
         {
             if(JintekiNetManager.HasInstance) {
-                JintekiNetManager.Instance.ConnectionFailedEvent -= ConnectionFailedEventHandler;
+                //JintekiNetManager.Instance.ConnectionErrorEvent -= ConnectionErrorEventHandler;
             }
         }
 
@@ -72,32 +69,28 @@ namespace EnergonSoftware.Netrunner.UI
         }
 
 #region Event Handlers
-        public async void OnLogin()
+        public void OnLogin()
         {
             SetInteractable(false);
             DisableErrorText();
 
-            await AuthManager.Instance.Authenticate(_usernameInput.text, _passwordInput.text, _saveLoginToggle.isOn,
-                () =>
-                {
-                    SceneManager.LoadSceneAsync("chat", LoadSceneMode.Additive);
-                    SceneManager.UnloadSceneAsync("auth");
-                },
-                reason =>
-                {
-                    EnableErrorText($"Authentication Failed: {reason}");
-                    SetInteractable(true);
-                }
-            ).ConfigureAwait(false);
+            JintekiNetManager.Instance.Connect(_usernameInput.text, _passwordInput.text, _saveLoginToggle.isOn);
         }
 
-        private void ConnectionFailedEventHandler(object sender, JintekiNetManager.ConnectionFailedEventArgs args)
+        /*private void LoginSuccessEventHandler(object sender, JintekiNetManager.LoginSuccessEventArgs args)
+        {
+            SceneManager.LoadSceneAsync("chat", LoadSceneMode.Additive);
+            SceneManager.UnloadSceneAsync("auth");
+        }
+
+        private void ConnectionErrorEventHandler(object sender, JintekiNetManager.ConnectionFailedEventArgs args)
         {
             GameManager.Instance.RunOnMainThread(() =>
             {
-                EnableErrorText($"Connection failed: {args.Reason}");
+                EnableErrorText($"Authentication Failed: {reason}");
+                SetInteractable(true);
             });
-        }
+        }*/
 #endregion
     }
 }
