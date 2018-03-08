@@ -1,10 +1,12 @@
 ﻿using System;
 
-using BestHTTP.SocketIO;
+using BestHTTP.WebSocket;
 
 using EnergonSoftware.Netrunner.Core;
 using EnergonSoftware.Netrunner.Core.Logging;
 using EnergonSoftware.Netrunner.Core.Util;
+
+using JetBrains.Annotations;
 
 using UnityEngine;
 
@@ -14,12 +16,13 @@ namespace EnergonSoftware.Netrunner.JintekiNet
     {
         private static readonly Logger Logger = new Logger(new CustomLogHandler());
 
-        private SocketManager _socketManager;
+        [CanBeNull]
+        private WebSocket _ws;
 
 #region Unity Lifecycle
         protected override void OnDestroy()
         {
-            _socketManager?.Close();
+            Disconnect();
 
             base.OnDestroy();
         }
@@ -36,29 +39,53 @@ namespace EnergonSoftware.Netrunner.JintekiNet
             }
             PlayerPrefsExtensions.SetBool("authSaveLogin", saveLogin);
 
-            _socketManager?.Close();
+            Disconnect();
 
-            SocketOptions options = new SocketOptions
-            {
-                AutoConnect = false
-            };
-            _socketManager = new SocketManager(new Uri(GameManager.Instance.Config.BackendURL), options);
+            _ws = new WebSocket(new Uri(GameManager.Instance.Config.BackendURL));
 
-            _socketManager.Socket.On("login", OnLogin);
-            _socketManager.Socket.On(SocketIOEventTypes.Error, OnError);
+            _ws.OnOpen += SocketOpenEventHandler;
+            _ws.OnMessage += SocketMessageEventHandler;
+            _ws.OnClosed += SocketClosedEventHandler;
+            _ws.OnError += SocketErrorEventHandler;
 
-            _socketManager.Open();
+            Logger.Log($"Connecting to {GameManager.Instance.Config.BackendURL}...");
+            _ws.Open();
+        }
+
+        public void Disconnect()
+        {
+            if(null == _ws) {
+                return;
+            }
+
+            Logger.Log("Closing connection");
+
+            _ws.Close();
+            _ws = null;
         }
 
 #region Event Handlers
-        private void OnLogin(Socket socket, Packet packet, params object[] args)
+        private void SocketOpenEventHandler(WebSocket ws)
         {
-            Logger.Log("Connection success!");
+            Logger.Log("Connection opened!");
         }
 
-        private void OnError(Socket socket, Packet packet, params object[] args)
+        private void SocketMessageEventHandler(WebSocket ws, string message)
         {
-            Logger.Log($"Connection Error: {args[0]}");
+            Logger.Log($"Socket message: {message}");
+        }
+
+        private void SocketClosedEventHandler(WebSocket ws, ushort code, string message)
+        {
+            Logger.Log($"Socket closed: {code}: {message}");
+        }
+
+        private void SocketErrorEventHandler(WebSocket ws, Exception ex)
+        {
+            string error = null != ws.InternalRequest.Response
+                ? $"[{ws.InternalRequest.Response.StatusCode}] {ws.InternalRequest.Response.Message}"
+                : string.Empty;
+            Logger.Log($"Connection Error: {ex?.Message ?? error}");
         }
 #endregion
     }

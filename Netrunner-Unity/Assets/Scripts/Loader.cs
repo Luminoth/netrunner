@@ -21,9 +21,8 @@ namespace EnergonSoftware.Netrunner
 
         private void CreateManagers()
         {
-            GameObject managers = new GameObject { name = "Managers" };
+            GameObject managers = new GameObject("Managers");
 
-// TODO: this process should be dependency-driven
             AssetManager.Create(managers);
             GameManager.Create(managers);
             JintekiNetManager.Create(managers);
