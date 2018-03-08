@@ -4,12 +4,14 @@
                                 dissoc-in cancellable card-is? side-str build-cost-str build-spend-msg cost-names
                                 zones->sorted-names remote->name remote-num->name central->name zone->name central->zone
                                 is-remote? is-central? get-server-type other-side same-card? same-side?
-                                combine-subtypes remove-subtypes click-spent? used-this-turn?]]
+                                combine-subtypes remove-subtypes remove-subtypes-once click-spent? used-this-turn?
+                                pluralize quantify type->rig-zone]]
             [game.macros :refer [effect req msg when-completed final-effect continue-ability]]
             [clojure.string :refer [split-lines split join lower-case]]
-            [clojure.core.match :refer [match]]))
-
-(def all-cards (atom {}))
+            [clojure.core.match :refer [match]]
+            [clojure.stacktrace :refer [print-stack-trace]]
+            [jinteki.utils :refer [str->int]]
+            [jinteki.cards :refer [all-cards]]))
 
 (load "core/events")    ; triggering of events
 (load "core/cards")     ; retrieving and updating cards

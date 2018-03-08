@@ -43,33 +43,38 @@
              :content [:p "To use a command, type it in chatbox and press Enter. Some of the commands will bring up a prompt "
                        "requiring you to select something. List of available commands:"
                        [:ul
-                        [:li [:code "/draw n"] " - Draw n cards"]
-                        [:li [:code "/credit n"] " - Set your credits to n"]
-                        [:li [:code "/click n"] " - Set your clicks to n"]
-                        [:li [:code "/memory n"] " - Set your memory to n"]
-                        [:li [:code "/tag n"] " - Set your tags to n"]
+                        [:li [:code "/adv-counter n"] " - set advancement counters on a card to n (player's own cards only). Deprecated in favor of " [:code "/counter ad n"]]
                         [:li [:code "/bp n"] " - Set your bad publicity to n"]
-                        [:li [:code "/link n"] " - Set your link to n"]
-                        [:li [:code "/handsize n"] " - Set your handsize to n"]
-                        [:li [:code "/rez"] " - Select a card to rez, ignoring all costs (Corp only)"]
-                        [:li [:code "/rez-all"] " - Rez all cards, ignoring all costs and flip cards in archives faceup (Corp only). For revealing your servers at the end of a game."]
-                        [:li [:code "/take-meat n"] " - Take n meat damage (Runner only)"]
-                        [:li [:code "/take-net n"] " - Take n net damage (Runner only)"]
-                        [:li [:code "/take-brain n"] " - Take n brain damage (Runner only)"]
-                        [:li [:code "/discard #n"] " - Discard card number n from your hand"]
-                        [:li [:code "/deck #n"] " - Put card number n from your hand on top of your deck"]
-                        [:li [:code "/rfg"] " - Select a card to remove from the game"]
-                        [:li [:code "/end-run"] " - End the run (Corp only)"]
-                        [:li [:code "/jack-out"] " - Jack out (Runner only)"]
-                        [:li [:code "/trace n"] " - Start a trace with base strength n (Corp only)"]
-                        [:li [:code "/psi"] " - Start a Psi game (Corp only)"]
+                        [:li [:code "/card-info"] " - display debug info about a card (player's own cards only)"]
+                        [:li [:code "/clear-win"] " - requests game to clear the current win state.  Requires both players to request it"]
+                        [:li [:code "/click n"] " - Set your clicks to n"]
                         [:li [:code "/close-prompt"] " - close an active prompt and show the next waiting prompt, or the core click actions"]
                         [:li [:code "/counter n"] " - set counters on a card to n (player's own cards only). Attempts to infer the type of counter to place. If the inference fails, you must use the next command to specify the counter type."]
-                        [:li [:code "/counter type n"] " - set the specified counter type on a card to n (player's own cards only). Type must be " [:code "agenda"] ", "
-                         [:code "advance"] ", " [:code "credit"] ", " [:code "power"] ", or " [:code "virus"] ". Can be abbreviated as " [:code "ag"] ", "  [:code "ad"]
-                         ", "  [:code "c"] ", "  [:code "p"] ", or " [:code "v"] " respectively."]
-                        [:li [:code "/adv-counter n"] " - set advancement counters on a card to n (player's own cards only). Deprecated in favor of " [:code "/counter ad n"]]
-                        [:li [:code "/card-info"] " - display debug info about a card (player's own cards only)"]]]}
+                        [:li [:code "/counter type n"] " - set the specified counter type on a card to n (player's own cards only). Type must be " [:code "agenda"] ", " [:code "advance"] ", " [:code "credit"] ", " [:code "power"] ", or " [:code "virus"] ". Can be abbreviated as " [:code "ag"] ", "  [:code "ad"] ", "  [:code "c"] ", "  [:code "p"] ", or " [:code "v"] " respectively."]
+                        [:li [:code "/credit n"] " - Set your credits to n"]
+                        [:li [:code "/deck #n"] " - Put card number n from your hand on top of your deck"]
+                        [:li [:code "/discard #n"] " - Discard card number n from your hand"]
+                        [:li [:code "/discard-random"] " - Discard a random card from your hand"]
+                        [:li [:code "/draw n"] " - Draw n cards"]
+                        [:li [:code "/end-run"] " - End the run (Corp only)"]
+                        [:li [:code "/handsize n"] " - Set your handsize to n"]
+                        [:li [:code "/jack-out"] " - Jack out (Runner only)"]
+                        [:li [:code "/link n"] " - Set your link to n"]
+                        [:li [:code "/memory n"] " - Set your memory to n"]
+                        [:li [:code "/move-bottom"] " - Pick a card in your hand to put on the bottom of your deck"]
+                        [:li [:code "/move-deck"] " - Pick a card from your play-area to put on top of your deck"]
+                        [:li [:code "/move-hand"] " - Pick a card from your play-area to put into your hand"]
+                        [:li [:code "/psi"] " - Start a Psi game (Corp only)"]
+                        [:li [:code "/rez"] " - Select a card to rez, ignoring all costs (Corp only)"]
+                        [:li [:code "/rez-all"] " - Rez all cards, ignoring all costs and flip cards in archives faceup (Corp only). For revealing your servers at the end of a game."]
+                        [:li [:code "/rfg"] " - Select a card to remove from the game"]
+                        [:li [:code "/facedown"] " - Select a card to install facedown in your rig (Runner only)"]
+                        [:li [:code "/roll n"] " - Roll an n-sided die"]
+                        [:li [:code "/tag n"] " - Set your tags to n"]
+                        [:li [:code "/take-brain n"] " - Take n brain damage (Runner only)"]
+                        [:li [:code "/take-meat n"] " - Take n meat damage (Runner only)"]
+                        [:li [:code "/take-net n"] " - Take n net damage (Runner only)"]
+                        [:li [:code "/trace n"] " - Start a trace with base strength n (Corp only)"]]]}
             {:id "documentation"
              :title "Is there more documentation on how to use Jinteki.net?"
              :content [:p "Read the "
@@ -148,7 +153,24 @@
                              "Some examples would be: learning the game, learning the site's interface, testing a completely new and crazy deck idea, "
                              "testing future spoilers, playing on a touchscreen, playing at work and likely to have to quit on short notice, etc. "
                              "All of these circumstances may cause needless frustration of players expecting to play a game in a competitive setting."])}
-
+            {:id "aboutstats"
+             :title "What are the options for tracking Game and Deck Statistics, and what do they mean?"
+             :content (list [:p "Games Started vs. Completed is always logged and displayed.  We want to discourage people dropping in games. "
+                             "You can toggle between the modes listed below if you feel like being a casual player one moment then logging stats the next. "
+                             "No data is lost or cleared when you toggle between modes."
+                             [:ul
+                              [:li "Always - statistics are kept and displayed for all games you play"]
+                              [:li "Competitive lobby only - statistics are kept and displayed only for competitive games"]
+                              [:li "None - statistics are neither logged or displayed"]]]
+                            [:p "What do the game statistics mean?"
+                             [:ul
+                              [:li "Games Started - games you have entered."]
+                              [:li "Games Completed - games that had a winner, or games that did not complete but opponent dropped first."]
+                              [:li "Games Incomplete -  games with no winner where you dropped first, and did not concede."]
+                              [:li "Games Won - games won.  The percentage is compared to those games lost."]
+                              [:li "Games Lost - games lost.  The percentage is compared to those games won."]]]
+                            [:p "Your game completion rate is visible in the player lobby so people can determine if they should play against you."
+                             " Don't quit during games - please concede if you have to leave."])}
             )}
     {:id "cards"
      :title "Cards and Specific Interactions"
@@ -171,9 +193,11 @@
              :title "What is MWL and \"Tournament legal\"? Why is my deck marked as \"Casual play only\"?"
              :content (list
                         [:p "New Angeles Police Department Most Wanted List, also known as NAPD MWL or just MWL, is a list "
-                         "of restricted cards introduced by FFG to tournament play. Each of the cards on the list reduces "
-                         "the influence printed on the ID by 1, with a minimum of 1 (so Professor is unaffected). For "
-                         "more information about the MWL read Tournament Rules from "
+                         "of cards with additional deck building restrictions for tournament play. "
+                         "There are two categories of MWL cards: \"restricted\" and \"removed\". "
+                         "You may only include up to one card (up to its maximum number of copies) from the restricted category. "
+                         "You may not include cards from the removed category. "
+                         "For more information about the MWL read Tournament Rules from "
                          [:a {:href "https://www.fantasyflightgames.com/en/products/android-netrunner-the-card-game/"} "the official FFG page"] "."]
                         [:p "Decks that are valid and fit within tournament restrictions are marked " [:span.legal "Tournament legal" ] ". "
                          "Decks that fit within the printed influence limit, but not within the tournament restrictions, "

@@ -8,24 +8,19 @@ http://www.jinteki.net
 
 [Gameplay videos](https://www.youtube.com/results?search_query=jinteki.net)
 
-![screenshot](https://dl.dropboxusercontent.com/u/5601199/screenshot.jpg)
+![screenshot](http://i.imgur.com/xkxOMHc.jpg)
 
 
-## Development status
+## Card implementation status
 
-The deck builder implements all the deck building constraints. It is optimised for fast deck editing. It is possible for instance to copy & paste a decklist from a forum and it will be parsed.
-
-The implementation of the game rules is in progress. About 95% of the cards are currently automated. For the cards that aren't, it is possible to resolve them manually most of the time.
 
 [Card rules implementation status](https://docs.google.com/spreadsheets/d/1ICv19cNjSaW9C-DoEEGH3iFt09PBTob4CAutGex0gnE/pubhtml)
 
 
 ## Dependencies
 
-* Node.js, Node Package Manager
 * Leiningen (version 2+)
 * MongoDB
-* Zero MQ
 
 
 ## Installation
@@ -40,10 +35,10 @@ Launch MongoDB and fetch card data:
 
 ```
 $ mongod
-$ npm run fetch
+$ lein fetch
 ```
 
-Compile and watch client side Clojurescript files:
+Compile and watch client side ClojureScript files:
 
 ```
 $ lein figwheel
@@ -55,29 +50,30 @@ Compile server side Clojure files:
 $ lein uberjar
 ```
 
-Launch game server:
+Launch web server:
 
-```
-$ java -jar target/netrunner-0.1.0-SNAPSHOT-standalone.jar
-```
+* As a REPL process (recommended for development):
+    ```
+    $ lein repl
+    ```
+* As a standalone process in production mode (must first run `lein cljsbuild once prod`):
+    ```
+    $ java -jar target/netrunner-standalone.jar
+    ```
 
-Launch the Node server:
 
-```
-$ npm start
-```
 
 ## Tests
 
 To run all tests:
 
 ```
-$ lein test test.all
+$ lein test
 ```
 
 To run a single test file:
 ```
-$ lein test test.cards.agendas
+$ lein test game-test.cards.agendas
 ```
 
 

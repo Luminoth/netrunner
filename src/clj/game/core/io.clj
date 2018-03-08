@@ -12,7 +12,24 @@
       (when (and (not= side nil) (not= side :spectator))
         (command state side)
         (swap! state update-in [:log] #(conj % {:user nil :text (str "[!]" (:username author) " uses a command: " text)})))
-      (swap! state update-in [:log] #(conj % {:user author :text text})))))
+      (swap! state update-in [:log] #(conj % {:user author :text text})))
+    (swap! state assoc :typing (remove #{(:username author)} (:typing @state)))))
+
+(defn typing
+  "Updates game state list with username of whoever is typing"
+  [state side {:keys [user]}]
+  (let [author (:username (or user (get-in @state [side :user])))]
+    (swap! state assoc :typing (distinct (conj (:typing @state) author)))
+    ;; say something to force update in client side rendering
+    (say state side {:user "__system__" :text "typing"})))
+
+(defn typingstop
+  "Clears typing flag from game state for user"
+  [state side {:keys [user text]}]
+  (let [author (or user (get-in @state [side :user]))]
+    (swap! state assoc :typing (remove #{(:username author)} (:typing @state)))
+    ;; say something to force update in client side rendering
+    (say state side {:user "__system__" :text "typing"})))
 
 (defn system-msg
   "Prints a message to the log without a username."
@@ -113,13 +130,23 @@
                                      (and (card-is? target :side :runner) (has-subtype? target "Virus")) :virus)
                         advance (= :advance-counter c-type)]
                     (cond advance (set-adv-counter state side target value)
-                          (not c-type) (toast state side "You need to specify a counter type for that card." "error"
+                          (not c-type) (toast state side (str "Could not infer what counter type you mean. Please specify one manually, by typing "
+                                                              "'/counter TYPE " value "', where TYPE is advance, agenda, credit, power, or virus.")
+                                              "error"
                                               {:time-out 0 :close-button true})
                           :else (do (set-prop state side target :counter (merge (:counter target) {c-type value}))
                                     (system-msg state side (str "sets " (name c-type) " counters to " value " on "
                                                                 (card-str state target)))))))
      :choices {:req (fn [t] (card-is? t :side side))}}
     {:title "/counter command"} nil))
+
+(defn command-facedown [state side]
+  (resolve-ability state side
+                   {:prompt "Select a card to install facedown"
+                    :choices {:req #(and (= (:side %) "Runner")
+                                         (in-hand? %))}
+                    :effect (effect (runner-install target {:facedown true}))}
+                   {:title "/faceup command"} nil))
 
 (defn command-counter [state side args]
   (if (= 1 (count args))
@@ -153,6 +180,9 @@
                                             (rez state side c {:ignore-cost :all-costs :force true}))))}}}
     {:title "/rez-all command"} nil))
 
+(defn command-roll [state side value]
+  (system-msg state side (str "rolls a " value " sided die and rolls a " (inc (rand-int value)))))
+
 (defn command-close-prompt [state side]
   (when-let [fprompt (-> @state side :prompt first)]
     (swap! state update-in [side :prompt] rest)
@@ -165,56 +195,77 @@
     (when (<= (count args) 2)
       (if (= (first (first args)) \#)
         (case command
-          "/discard"    #(move %1 %2 (nth (get-in @%1 [%2 :hand]) num nil) :discard)
           "/deck"       #(move %1 %2 (nth (get-in @%1 [%2 :hand]) num nil) :deck {:front true})
+          "/discard"    #(move %1 %2 (nth (get-in @%1 [%2 :hand]) num nil) :discard)
           nil)
         (case command
-          "/draw"       #(draw %1 %2 (max 0 value))
-          "/credit"     #(swap! %1 assoc-in [%2 :credit] (max 0 value))
-          "/click"      #(swap! %1 assoc-in [%2 :click] (max 0 value))
-          "/memory"     #(swap! %1 assoc-in [%2 :memory] value)
-          "/tag"        #(swap! %1 assoc-in [%2 :tag] (max 0 value))
+          "/adv-counter" #(command-adv-counter %1 %2 value)
           "/bp"         #(swap! %1 assoc-in [%2 :bad-publicity] (max 0 value))
+          "/card-info"  #(resolve-ability %1 %2
+                                          {:effect (effect (system-msg (str "shows card-info of "
+                                                                            (card-str state target)
+                                                                            ": " (get-card state target))))
+                                           :choices {:req (fn [t] (card-is? t :side %2))}}
+                                          {:title "/card-info command"} nil)
+          "/clear-win"  #(clear-win %1 %2)
+          "/click"      #(swap! %1 assoc-in [%2 :click] (max 0 value))
+          "/close-prompt" #(command-close-prompt %1 %2)
+          "/counter"    #(command-counter %1 %2 args)
+          "/credit"     #(swap! %1 assoc-in [%2 :credit] (max 0 value))
+          "/deck"       #(toast %1 %2 "/deck number takes the format #n")
+          "/discard"    #(toast %1 %2 "/discard number takes the format #n")
+          "/discard-random" #(move %1 %2 (rand-nth (get-in @%1 [%2 :hand])) :discard)
+          "/draw"       #(draw %1 %2 (max 0 value))
+          "/end-run"    #(when (= %2 :corp) (end-run %1 %2))
+          "/error"      #(show-error-toast %1 %2)
+          "/handsize"   #(swap! %1 assoc-in [%2 :hand-size-modification] (- (max 0 value) (get-in @%1 [%2 :hand-size-base])))
+          "/jack-out"   #(when (= %2 :runner) (jack-out %1 %2 nil))
           "/link"       #(swap! %1 assoc-in [%2 :link] (max 0 value))
-          "/handsize"   #(swap! %1 assoc-in [%2 :hand-size-modification] (- (max 0 value) (:hand-size-base %2)))
-          "/take-meat"  #(when (= %2 :runner) (damage %1 %2 :meat  (max 0 value)))
-          "/take-net"   #(when (= %2 :runner) (damage %1 %2 :net   (max 0 value)))
-          "/take-brain" #(when (= %2 :runner) (damage %1 %2 :brain (max 0 value)))
+          "/memory"     #(swap! %1 assoc-in [%2 :memory] value)
+          "/move-bottom"  #(resolve-ability %1 %2
+                                            {:prompt "Select a card in hand to put on the bottom of your deck"
+                                             :effect (effect (move target :deck))
+                                             :choices {:req (fn [t] (and (card-is? t :side %2) (in-hand? t)))}}
+                                            {:title "/move-bottom command"} nil)
+          "/move-deck"   #(resolve-ability %1 %2
+                                           {:prompt "Select a card to move to the top of your deck"
+                                            :effect (req (let [c (deactivate %1 %2 target)]
+                                                           (move %1 %2 c :deck {:front true})))
+                                            :choices {:req (fn [t] (card-is? t :side %2))}}
+                                           {:title "/move-deck command"} nil)
+          "/move-hand"  #(resolve-ability %1 %2
+                                          {:prompt "Select a card to move to your hand"
+                                           :effect (req (let [c (deactivate %1 %2 target)]
+                                                          (move %1 %2 c :hand)))
+                                           :choices {:req (fn [t] (card-is? t :side %2))}}
+                                          {:title "/move-hand command"} nil)
           "/psi"        #(when (= %2 :corp) (psi-game %1 %2
                                                       {:title "/psi command" :side %2}
                                                       {:equal  {:msg "resolve equal bets effect"}
                                                        :not-equal {:msg "resolve unequal bets effect"}}))
-          "/trace"      #(when (= %2 :corp)
-                          (corp-trace-prompt %1
-                                             {:title "/trace command" :side %2}
-                                             {:base (max 0 value)
-                                              :msg "resolve successful trace effect"}))
-          "/card-info"  #(resolve-ability %1 %2 {:effect (effect (system-msg (str "shows card-info of "
-                                                                                  (card-str state target) ": " (get-card state target))))
-                                                 :choices {:req (fn [t] (card-is? t :side %2))}}
-                                          {:title "/card-info command"} nil)
-          "/counter"    #(command-counter %1 %2 args)
-          "/adv-counter" #(command-adv-counter %1 %2 value)
-          "/jack-out"   #(when (= %2 :runner) (jack-out %1 %2 nil))
-          "/end-run"    #(when (= %2 :corp) (end-run %1 %2))
-          "/close-prompt" #(command-close-prompt %1 %2)
           "/rez"        #(when (= %2 :corp)
-                          (resolve-ability %1 %2 {:effect (effect (rez target {:ignore-cost :all-costs :force true}))
-                                                  :choices {:req (fn [t] (card-is? t :side %2))}}
-                                           {:title "/rez command"} nil))
+                           (resolve-ability %1 %2
+                                            {:effect (effect (rez target {:ignore-cost :all-costs :force true}))
+                                             :choices {:req (fn [t] (card-is? t :side %2))}}
+                                            {:title "/rez command"} nil))
           "/rez-all"    #(when (= %2 :corp) (command-rezall %1 %2 value))
-          "/rfg"        #(resolve-ability %1 %2 {:prompt "Select a card to remove from the game"
-                                                 :effect (req (let [c (deactivate %1 %2 target)]
-                                                                (move %1 %2 c :rfg)))
-                                                 :choices {:req (fn [t] (card-is? t :side %2))}}
+          "/rfg"        #(resolve-ability %1 %2
+                                          {:prompt "Select a card to remove from the game"
+                                           :effect (req (let [c (deactivate %1 %2 target)]
+                                                          (move %1 %2 c :rfg)))
+                                           :choices {:req (fn [t] (card-is? t :side %2))}}
                                           {:title "/rfg command"} nil)
-          "/move-bottom"  #(resolve-ability %1 %2 {:prompt "Select a card in hand to put on the bottom of your deck"
-                                                   :effect (effect (move target :deck))
-                                                   :choices {:req (fn [t] (and (card-is? t :side %2) (in-hand? t)))}}
-                                            {:title "/move-bottom command"} nil)
-          "/error"      #(show-error-toast %1 %2)
-          "/discard"    #(toast %1 %2 "/discard number takes the format #n")
-          "/deck"       #(toast %1 %2 "/deck number takes the format #n")
+          "/facedown"   #(when (= %2 :runner)
+                           (command-facedown %1 %2))
+          "/roll"       #(command-roll %1 %2 value)
+          "/tag"        #(swap! %1 assoc-in [%2 :tag] (max 0 value))
+          "/take-brain" #(when (= %2 :runner) (damage %1 %2 :brain (max 0 value)))
+          "/take-meat"  #(when (= %2 :runner) (damage %1 %2 :meat  (max 0 value)))
+          "/take-net"   #(when (= %2 :runner) (damage %1 %2 :net   (max 0 value)))
+          "/trace"      #(when (= %2 :corp) (corp-trace-prompt %1
+                                                               {:title "/trace command" :side %2}
+                                                               {:base (max 0 value)
+                                                                :msg "resolve successful trace effect"}))
           nil)))))
 
 (defn corp-install-msg
@@ -235,11 +286,8 @@
 (defn event-title
   "Gets a string describing the internal engine event keyword"
   [event]
-  (case event
-    :agenda-scored "agenda-scored"
-    :agenda-stolen "agenda-stolen"
-    :runner-install "runner-install"
-    :successful-run "successful-run"
+  (if (keyword? event)
+    (name event)
     (str event)))
 
 (defn show-error-toast

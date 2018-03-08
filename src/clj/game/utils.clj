@@ -1,6 +1,8 @@
 (ns game.utils
   (:require [clojure.string :refer [split-lines split join]]))
 
+(declare pluralize)
+
 (def cid (atom 0))
 
 (defn make-cid []
@@ -8,10 +10,27 @@
 
 (defn abs [n] (max n (- n)))
 
-(defn merge-costs [costs]
-  (vec (reduce #(let [key (first %2) value (last %2)]
-              (assoc %1 key (+ (or (key %1) 0) value)))
-           {} (partition 2 (flatten costs)))))
+(defn clean-forfeit
+  "Takes a flat :forfeit in costs and adds a cost of 1.
+  Ignores cost vectors with an even count as these have forfeit value included"
+  [costs]
+  (let [fcosts (flatten costs)]
+  (if (odd? (count fcosts))
+    (replace {[:forfeit] [:forfeit 1],
+              :forfeit [:forfeit 1]} fcosts)
+    costs)))
+
+(defn merge-costs
+  "This combines costs from a number of sources in the game into a single cost per type
+  Damage is not merged as it needs to be invidual.  Needs augmention more than net-damage appears"
+  [costs]
+  (let [fc (partition 2 (flatten (clean-forfeit costs)))
+        jc (filter #(not= :net-damage (first %)) fc)
+        dc (filter #(= :net-damage (first %)) fc)]
+    (vec (map vec (concat
+      (reduce #(let [k (first %2) value (last %2)]
+                    (assoc %1 k (+ (or (k %1) 0) value)))
+                 {} jc) dc)))))
 
 (defn remove-once [pred coll]
   (let [[head tail] (split-with pred coll)]
@@ -41,19 +60,33 @@
     (map #(assoc % :zone dest) coll)))
 
 (defn to-keyword [string]
-  (if (string? string)
+  (cond
+
+    (= "[Credits]" string)
+    :credit
+
+    (string? string)
     (keyword (.toLowerCase string))
+
+    :else
     string))
 
 (defn capitalize [string]
   (str (Character/toUpperCase (first string)) (subs string 1)))
 
-(defn costs-to-symbol [costs]
-  (clojure.string/join ", " (map #(let [key (first %) value (last %)]
-                                   (case key
-                                     :credit (str value "[Credits]")
-                                     :click (reduce str (for [i (range value)] "[Click]"))
-                                     (str value (str key)))) (partition 2 (flatten costs)))))
+(defn costs-to-symbol
+  "Used during steal to print runner prompt for payment"
+  [costs]
+  (join ", " (map #(let [key (first %) value (last %)]
+                     (case key
+                       :credit (str value " [Credits]")
+                       :click (reduce str (for [i (range value)] "[Click]"))
+                       :net-damage (str value " net damage")
+                       :mill (str value " card mill")
+                       :hardware (str value " installed hardware")
+                       :shuffle-installed-to-stack (str "shuffling " value " installed "
+                                                        (pluralize "program" value) " into the stack")
+                       (str value (str key)))) (partition 2 (flatten costs)))))
 
 (defn vdissoc [v n]
   (vec (concat (subvec v 0 n) (subvec v (inc n)))))
@@ -73,7 +106,7 @@
       (if (and (> num Integer/MIN_VALUE) (< num Integer/MAX_VALUE)) (int num) num))
   (catch Exception e nil)))
 
-(def safe-split (fnil clojure.string/split ""))
+(def safe-split (fnil split ""))
 
 (defn dissoc-in
   "Dissociates an entry from a nested associative structure returning a new
@@ -122,6 +155,7 @@
     (case attr
       :credit (str value " [$]")
       :click  (->> "[Click]" repeat (take value) (apply str))
+      :forfeit (str value " Agenda" (when (> value 1) "s"))
       nil)))
 
 (defn build-cost-str
@@ -170,24 +204,27 @@
 (defn remote-num->name [num]
   (str "Server " num))
 
-(defn remote->name [zone]
+(defn remote->name
   "Converts a remote zone to a string"
+  [zone]
   (let [kw (if (keyword? zone) zone (last zone))
         s (str kw)]
     (if (.startsWith s ":remote")
       (let [num (last (split s #":remote"))]
         (remote-num->name num)))))
 
-(defn central->name [zone]
+(defn central->name
   "Converts a central zone keyword to a string."
+  [zone]
   (case (if (keyword? zone) zone (last zone))
     :hq "HQ"
     :rd "R&D"
     :archives "Archives"
     nil))
 
-(defn zone->name [zone]
+(defn zone->name
   "Converts a zone to a string."
+  [zone]
   (or (central->name zone)
       (remote->name zone)))
 
@@ -202,21 +239,29 @@
 (defn zones->sorted-names [zones]
   (->> zones (sort-by zone->sort-key) (map zone->name)))
 
-(defn is-remote? [zone]
+(defn is-remote?
   "Returns true if the zone is for a remote server"
+  [zone]
   (not (nil? (remote->name zone))))
 
-(defn is-central? [zone]
+(defn is-central?
   "Returns true if the zone is for a central server"
+  [zone]
   (not (is-remote? zone)))
 
-(defn central->zone [zone]
+(defn central->zone
   "Converts a central server keyword like :discard into a corresponding zone vector"
+  [zone]
   (case (if (keyword? zone) zone (last zone))
     :discard [:servers :archives]
     :hand [:servers :hq]
     :deck [:servers :rd]
     nil))
+
+(defn type->rig-zone
+  "Converts a runner's card type to a vector zone, e.g. 'Program' -> [:rig :program]"
+  [type]
+  (vec [:rig (-> type .toLowerCase keyword)]))
 
 (defn get-server-type [zone]
   (or (#{:hq :rd :archives} zone) :remote))
@@ -224,18 +269,48 @@
 (defn private-card [card]
   (select-keys card [:zone :cid :side :new :host :counter :advance-counter :hosted :icon]))
 
-(defn combine-subtypes [is-distinct subtype-string & new-subtypes]
+(defn combine-subtypes
   "Takes an existing subtype-string, adds in the new-subtypes, and removes
   duplicates if is-distinct is truthy"
+  [is-distinct subtype-string & new-subtypes]
   (let [do-distinct #(if is-distinct (distinct %) %)]
     (->> (split (or subtype-string " - ") #" - ")
          (concat new-subtypes)
          do-distinct
          (join " - "))))
 
-(defn remove-subtypes [subtype-string & subtypes-to-remove]
+(defn remove-subtypes
   "Takes an existing subtype-string and removes all instances of
   subtypes-to-remove"
+  [subtype-string & subtypes-to-remove]
   (->> (split (or subtype-string " - ") #" - ")
        (remove #(some #{%} subtypes-to-remove))
        (join " - ")))
+
+(defn remove-subtypes-once
+  "Takes an existing subtype-string and removes one instance of
+  each subtypes-to-remove"
+  [subtype-string subtypes-to-remove]
+  (let [types (split (or subtype-string " - ") #" - ")
+        part (join " - " (remove-once #(not= % (first subtypes-to-remove)) types))
+        left (rest subtypes-to-remove)]
+    (if-not (empty? left)
+      (remove-subtypes-once part left)
+      part)))
+
+(defn pluralize
+  "Makes a string plural based on the number n. Takes specific suffixes for singular and plural cases if necessary."
+  ([string n] (pluralize string "s" n))
+  ([string suffix n] (pluralize string "" suffix n))
+  ([string single-suffix plural-suffix n]
+   (if (or (= 1 n)
+           (= -1 n))
+     (str string single-suffix)
+     (str string plural-suffix))))
+
+(defn quantify
+  "Ensures the string is correctly pluralized based on the number n."
+  ([n string] (str n " " (pluralize string n)))
+  ([n string suffix] (str n " " (pluralize string suffix n)))
+  ([n string single-suffix plural-suffix]
+   (str n " " (pluralize string single-suffix plural-suffix n))))

@@ -1,8 +1,8 @@
 (in-ns 'game.core)
 
 (declare can-trigger? card-def clear-wait-prompt effect-completed event-title get-card get-nested-host get-remote-names
-         get-runnable-zones get-zones make-eid register-effect-completed register-suppress resolve-ability show-wait-prompt
-         trigger-suppress unregister-suppress)
+         get-runnable-zones get-zones installed? make-eid register-effect-completed register-suppress resolve-ability
+         show-wait-prompt trigger-suppress unregister-suppress)
 
 ; Functions for registering and dispatching events.
 (defn register-events
@@ -14,15 +14,17 @@
   (register-suppress state side (:suppress (card-def card)) card))
 
 (defn unregister-events
-  "Removes all event handlers defined for the given card."
-  [state side card]
-  (let [cdef (card-def card)]
+  "Removes all event handlers defined for the given card.
+   Optionally input a partial card-definition map to remove only some handlers"
+  ([state side card] (unregister-events state side card nil))
+  ([state side card part-def]
+   (let [cdef (or part-def (card-def card))]
     ;; Combine normal events and derezzed events. Any merge conflicts should not matter
     ;; as they should cause all relevant events to be removed anyway.
     (doseq [e (merge (:events cdef) (:derezzed-events cdef))]
       (swap! state update-in [:events (first e)]
              #(remove (fn [effect] (= (get-in effect [:card :cid]) (:cid card))) %))))
-  (unregister-suppress state side card))
+  (unregister-suppress state side card)))
 
 (defn trigger-event
   "Resolves all abilities registered as handlers for the given event key, passing them
@@ -102,7 +104,7 @@
                        :effect (req (if (< 1 (count handlers))
                                       (continue-ability state side (choose-handler (next handlers)) nil event-targets)
                                       (effect-completed state side eid nil)))}))
-                  {:prompt "Select a trigger to resolve"
+                  {:prompt "Choose a trigger to resolve"
                    :choices titles
                    :delayed-completion true
                    :effect (req (let [to-resolve (some #(when (= target (:title (:card %))) %) handlers)
@@ -217,6 +219,22 @@
   [state side ev]
   (mapcat rest (filter #(= ev (first %)) (:turn-events @state))))
 
+(defn last-turn? [state side event]
+  (if (-> @state side :register-last-turn event) true false))
+
+(defn not-last-turn? [state side event]
+  (cond
+
+    ; Return false if no previous turn (i.e. turn 1).
+    (-> @state side :register-last-turn nil?)
+    false
+
+    (-> @state side :register-last-turn event)
+    false
+
+    :else
+    true))
+
 (defn first-event?
   "Returns true if the given event has not occurred yet this turn."
   [state side ev]
@@ -231,6 +249,26 @@
   "Returns true if the active run is the first succesful run on the given server"
   [state server]
   (empty? (filter #(= [server] %) (turn-events state :runner :successful-run))))
+
+(defn get-turn-damage
+  "Returns the value of damage take this turn"
+  [state side]
+  (apply + (map #(nth % 2) (turn-events state :runner :damage))))
+
+(defn get-installed-trashed
+  "Returns list of cards trashed this turn owned by side that were installed"
+  [state side]
+  (filter #(-> % first installed?) (turn-events state side (keyword (str (name side) "-trash")))))
+
+(defn first-installed-trash?
+  "Returns true if this is the first trash of an installed card this turn by this side"
+  [state side]
+  (empty? (get-installed-trashed state side)))
+
+(defn first-installed-trash-own?
+  "Returns true if this is the first trash of an owned installed card this turn by this side"
+  [state side]
+  (empty? (filter #(= (:side (first %)) (side-str side)) (get-installed-trashed state side))))
 
 ;;; Effect completion triggers
 (defn register-effect-completed
